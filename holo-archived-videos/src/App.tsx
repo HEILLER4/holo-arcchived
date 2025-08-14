@@ -2,6 +2,43 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Hls from "hls.js";
 import { Search, Play, Clock, Tag, X, Film, Filter, Download } from "lucide-react";
+import { Routes, Route, Link, useParams, useNavigate } from "react-router-dom";
+
+const videos = [
+  { id: "v1", title: "Sample Video 1", src: "https://example.com/video1.mp4" },
+  { id: "v2", title: "Sample Video 2", src: "https://example.com/video2.mp4" }
+];
+
+function ArchiveHome() {
+  return (
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Video Archive</h1>
+      <div className="grid grid-cols-2 gap-4">
+        {videos.map(v => (
+          <Link key={v.id} to={`/video/${v.id}`} className="p-4 border rounded hover:bg-gray-100">
+            {v.title}
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function VideoPage() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const video = videos.find(v => v.id === id);
+
+  if (!video) return <p>Video not found</p>;
+
+  return (
+    <div className="p-4">
+      <button onClick={() => navigate(-1)} className="mb-4 text-blue-500">← Back</button>
+      <h1 className="text-xl font-bold mb-2">{video.title}</h1>
+      <video controls className="w-full" src={video.src}></video>
+    </div>
+  );
+}
 
 /*
   ✅ What this is
@@ -337,83 +374,101 @@ export default function App() {
   const filtered = useFilteredVideos(videos, query, activeTag);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white text-gray-900">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b">
-        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
-          <Play className="w-6 h-6" />
-          <h1 className="text-lg sm:text-xl font-semibold">Archived Videos</h1>
-          <span className="ml-auto hidden sm:inline text-xs text-gray-500">Public • Stream-only</span>
-        </div>
-      </header>
+    <>
+      <Routes>
+        <Route path="/" element={<ArchiveHome />} />
+        <Route path="/video/:id" element={<VideoPage />} />
+      </Routes>
 
-      {/* Toolbar */}
-      <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col gap-3">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search title, description, tags…"
-              className="w-full pl-10 pr-3 py-2 rounded-xl border bg-white focus:outline-none focus:ring-2 focus:ring-black/10"
-            />
+      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white text-gray-900">
+        {/* Header */}
+        <header className="sticky top-0 z-40 bg-white/80 backdrop-blur supports-[backdrop-filter]:bg-white/60 border-b">
+          <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
+            <Play className="w-6 h-6" />
+            <h1 className="text-lg sm:text-xl font-semibold">Archived Videos</h1>
+            <span className="ml-auto hidden sm:inline text-xs text-gray-500">
+              Public • Stream-only
+            </span>
           </div>
-          <div className="inline-flex items-center gap-2 text-sm text-gray-600">
-            <Filter className="w-4 h-4" />
-            <span className="hidden sm:inline">Filter by tag:</span>
+        </header>
+
+        {/* Toolbar */}
+        <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search title, description, tags…"
+                className="w-full pl-10 pr-3 py-2 rounded-xl border bg-white focus:outline-none focus:ring-2 focus:ring-black/10"
+              />
+            </div>
+            <div className="inline-flex items-center gap-2 text-sm text-gray-600">
+              <Filter className="w-4 h-4" />
+              <span className="hidden sm:inline">Filter by tag:</span>
+            </div>
+            <UniqueTags videos={videos} onPick={setActiveTag} active={activeTag} />
           </div>
-          <UniqueTags videos={videos} onPick={setActiveTag} active={activeTag} />
-        </div>
 
-        <p className="text-xs text-gray-500">{filtered.length} result{filtered.length !== 1 ? "s" : ""}</p>
-      </div>
-
-      {/* Grid */}
-      <main className="max-w-6xl mx-auto px-4 pb-16">
-        {filtered.length === 0 ? (
-          <div className="py-16 text-center text-gray-500">No videos match your search.</div>
-        ) : (
-          <motion.div layout className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <AnimatePresence initial={false}>
-              {filtered.map((v) => (
-                <motion.div key={v.id} layout>
-                  <VideoCard v={v} onOpen={setOpen} />
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
-        )}
-      </main>
-
-      {/* Player Modal */}
-      <AnimatePresence>{open && <VideoPlayer video={open} onClose={() => setOpen(null)} />}</AnimatePresence>
-
-      {/* Footer */}
-      <footer className="border-t bg-white/60">
-        <div className="max-w-6xl mx-auto px-4 py-6 text-xs text-gray-500">
-          <p>
-            © {new Date().getFullYear()} Your Archive. Streaming only. Add/curate videos manually in code or via a JSON
-            manifest.
+          <p className="text-xs text-gray-500">
+            {filtered.length} result{filtered.length !== 1 ? "s" : ""}
           </p>
-          <details className="mt-2">
-            <summary className="cursor-pointer">How do I add my own videos?</summary>
-            <div className="mt-2 space-y-2">
-              <ol className="list-decimal list-inside space-y-1">
-                <li>
-                  Replace the <code>VIDEOS</code> array with your entries. Each item supports multiple sources (e.g.,
-                  HLS + MP4 fallback).
-                </li>
-                <li>
-                  For Archive.org: open your item, find the file under <em>Download Options</em>, copy the direct URL,
-                  and use it as a source.
-                </li>
-                <li>
-                  (Optional) Move data to <code>/public/videos.json</code> and fetch it. Keep this app static.
-                </li>
-                <li>Deploy on Vercel/Netlify for free.</li>
-              </ol>
-              <pre className="text-xs bg-gray-50 p-3 rounded border overflow-auto">{`
+        </div>
+
+        {/* Grid */}
+        <main className="max-w-6xl mx-auto px-4 pb-16">
+          {filtered.length === 0 ? (
+            <div className="py-16 text-center text-gray-500">
+              No videos match your search.
+            </div>
+          ) : (
+            <motion.div
+              layout
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+            >
+              <AnimatePresence initial={false}>
+                {filtered.map((v) => (
+                  <motion.div key={v.id} layout>
+                    <VideoCard v={v} onOpen={setOpen} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </main>
+
+        {/* Player Modal */}
+        <AnimatePresence>
+          {open && <VideoPlayer video={open} onClose={() => setOpen(null)} />}
+        </AnimatePresence>
+
+        {/* Footer */}
+        <footer className="border-t bg-white/60">
+          <div className="max-w-6xl mx-auto px-4 py-6 text-xs text-gray-500">
+            <p>
+              © {new Date().getFullYear()} Your Archive. Streaming only. Add/curate videos
+              manually in code or via a JSON manifest.
+            </p>
+            <details className="mt-2">
+              <summary className="cursor-pointer">How do I add my own videos?</summary>
+              <div className="mt-2 space-y-2">
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>
+                    Replace the <code>VIDEOS</code> array with your entries. Each item supports
+                    multiple sources (e.g., HLS + MP4 fallback).
+                  </li>
+                  <li>
+                    For Archive.org: open your item, find the file under <em>Download Options</em>,
+                    copy the direct URL, and use it as a source.
+                  </li>
+                  <li>
+                    (Optional) Move data to <code>/public/videos.json</code> and fetch it. Keep
+                    this app static.
+                  </li>
+                  <li>Deploy on Vercel/Netlify for free.</li>
+                </ol>
+                <pre className="text-xs bg-gray-50 p-3 rounded border overflow-auto">{`
 {
   "id": "my-001",
   "title": "My Archived Talk",
@@ -428,10 +483,12 @@ export default function App() {
   ]
 }
 `}</pre>
-            </div>
-          </details>
-        </div>
-      </footer>
-    </div>
+              </div>
+            </details>
+          </div>
+        </footer>
+      </div>
+    </>
   );
 }
+
